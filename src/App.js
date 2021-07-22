@@ -1,37 +1,39 @@
-import logo from './logo.svg';
-import './App.css';
+import { useEffect, useState } from "react";
 
-import react, { useEffect, useState} from 'react'
+import "./App.css";
 
 // import { Enrico} from 'nucypher-ts' // does not work
 
 function App() {
+  const [umbral, setUmbral] = useState();
+  const [nucypher, setNucypher] = useState();
+  const [alice_sk, setAliceKey] = useState();
+  const [bob_sk, setBobKey] = useState();
 
-  const [umbral, setUmbral] = useState()
-  const [alice_sk, setAliceKey] = useState()
-  const [bob_sk, setBobKey] = useState()
+  const [plaintext, setPlaintext] = useState();
+  const [result, setResult] = useState();
 
-
-  const [plaintext, setPlaintext] = useState()
-  const [result, setResult] = useState()
-
-  const [cfrags, setCfrags] = useState([])
+  const [cfrags, setCfrags] = useState([]);
 
   const loadUmbral = async () => {
-    const wumbral = await import('umbral-pre')
-    setUmbral(wumbral)
-  }
+    const wumbral = await import("umbral-pre");
+    setUmbral(wumbral);
+  };
+
+  const loadNucypher = async () => {
+    const nucypher = await import("nucypher-ts");
+    setNucypher(nucypher);
+  };
 
   const reset = () => {
-    setPlaintext(null)
-    setResult(null)
-    setAliceKey(umbral.SecretKey.random())
-    setBobKey(umbral.SecretKey.random())
-    setCfrags([])
-  }
+    setPlaintext(null);
+    setResult(null);
+    setAliceKey(umbral.SecretKey.random());
+    setBobKey(umbral.SecretKey.random());
+    setCfrags([]);
+  };
 
   const testUmbral = () => {
-
     let alice_pk = alice_sk.publicKey();
 
     let enc = new TextEncoder();
@@ -61,7 +63,10 @@ function App() {
     // and decrypt the ciphertext with her private key.
 
     let plaintext_alice = umbral.decryptOriginal(alice_sk, capsule, ciphertext);
-    console.assert(dec.decode(plaintext_alice) == plaintext, "decrypt_original() failed");
+    console.assert(
+      dec.decode(plaintext_alice) == plaintext,
+      "decrypt_original() failed"
+    );
 
     // When Alice wants to grant Bob access to open her encrypted messages,
     // she creates re-encryption key fragments, or "kfrags", which are then
@@ -70,7 +75,14 @@ function App() {
     let n = 3; // how many fragments to create
     let m = 2; // how many should be enough to decrypt
     let kfrags = umbral.generateKFrags(
-        alice_sk, bob_pk, signer, m, n, true, true);
+      alice_sk,
+      bob_pk,
+      signer,
+      m,
+      n,
+      true,
+      true
+    );
 
     // Bob asks several Ursulas to re-encrypt the capsule so he can open it.
     // Each Ursula performs re-encryption on the capsule using the kfrag provided by Alice,
@@ -85,7 +97,7 @@ function App() {
     // Ursula 1
     let cfrag1 = umbral.reencrypt(capsule, kfrags[1]);
 
-    setCfrags([cfrag0, cfrag1])
+    setCfrags([cfrag0, cfrag1]);
 
     // ...
 
@@ -96,38 +108,77 @@ function App() {
     // wasm-pack does not support taking arrays as arguments,
     // so we build a capsule+cfrags object before decryption.
     let plaintext_bob = capsule
-        .withCFrag(cfrag0)
-        .withCFrag(cfrag1)
-        .decryptReencrypted(bob_sk, alice_pk, ciphertext);
+      .withCFrag(cfrag0)
+      .withCFrag(cfrag1)
+      .decryptReencrypted(bob_sk, alice_pk, ciphertext);
 
-    setResult(dec.decode(plaintext_bob))
+    setResult(dec.decode(plaintext_bob));
+  };
 
-  }
+  const testNucypherTs = () => {
+    const alice = new nucypher.Alice({})
+    console.log({ alice });
+    console.log('nucypher-ts works!')
+  };
 
   useEffect(() => {
-    loadUmbral()
+    loadUmbral();
+    loadNucypher();
   }, []);
 
   return (
     <div className="App">
       <header className="App-header">
-        { umbral ?
+        {umbral ? (
           <div className="stack left">
             <div>
               <div>Create Alice and Bob</div>
-              <button onClick={e => reset()}>Go</button>
+              <button onClick={(e) => reset()}>Go</button>
               <div>{alice_sk && alice_sk.toString()}</div>
-              <div>{alice_sk && <span>Alice: {alice_sk.publicKey().toString()}</span>}</div>
-              <div>{bob_sk && <span>Bob: {bob_sk.publicKey().toString()}</span>}</div>
+              <div>
+                {alice_sk && (
+                  <span>Alice: {alice_sk.publicKey().toString()}</span>
+                )}
+              </div>
+              <div>
+                {bob_sk && <span>Bob: {bob_sk.publicKey().toString()}</span>}
+              </div>
             </div>
 
-            {alice_sk && <div>plaintext: <input type="text" onChange={e => setPlaintext(e.target.value)}/>
-            <button onClick={e => testUmbral()}>Go</button>
-            </div>}
-            {result && <div>cfrags: {cfrags.map((cf) => {return <div key={cf.toString()}><small>{cf.toString()}</small></div>})}</div>}
+            {alice_sk && (
+              <div>
+                plaintext:{" "}
+                <input
+                  type="text"
+                  onChange={(e) => setPlaintext(e.target.value)}
+                />
+                <button onClick={(e) => testUmbral()}>
+                  Go umbral-pre-wasm!
+                </button>
+                <hr></hr>
+                <button onClick={(e) => testNucypherTs()}>
+                  Go nucypher-ts!
+                </button>
+                <h4>(See console for results)</h4>
+              </div>
+            )}
+            {result && (
+              <div>
+                cfrags:{" "}
+                {cfrags.map((cf) => {
+                  return (
+                    <div key={cf.toString()}>
+                      <small>{cf.toString()}</small>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             {result && <div>result: {result}</div>}
           </div>
-        : <span>loading umbral</span>}
+        ) : (
+          <span>loading umbral</span>
+        )}
       </header>
     </div>
   );
